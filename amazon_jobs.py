@@ -14,6 +14,16 @@ EMAIL_TO = os.getenv("EMAIL_TO")
 EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
+DISCORD_WEBHOOK = os.getenv("DISCORD_WEBHOOK") 
+
+def send_discord(new_jobs):
+    content = "\n".join([f"{j['title']}: {j['link']}" for j in new_jobs])
+    data = {"content": content}
+    response = requests.post(DISCORD_WEBHOOK, json=data)
+    if response.status_code == 204:
+        print("✅ Discord alert sent")
+    else:
+        print("❌ Failed to send Discord alert:", response.text)
 
 def fetch_jobs():
     resp = requests.get(URL)
@@ -52,7 +62,8 @@ def main(test_mode=False):
     if test_mode:
         new_jobs = [{"title": "TEST JOB", "link": "https://example.com"}]
         send_email(new_jobs)
-        print("✅ Test email sent")
+        send_discord(new_jobs)
+        print("✅ Test email and Discord sent!")
         return
 
     jobs = fetch_jobs()
@@ -60,6 +71,7 @@ def main(test_mode=False):
     new_jobs = [j for j in jobs if j not in seen]
 
     if new_jobs:
+        send_discord(new_jobs)
         send_email(new_jobs)
         save_seen(jobs)
         print(f"✅ Sent {len(new_jobs)} new jobs")
