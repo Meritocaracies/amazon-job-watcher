@@ -23,7 +23,7 @@ jobs:
           playwright install chromium
 
       - name: Run job watcher
-        run: python amazon_jobs_playwright.py
+        run: python amazon_jobs.py
         env:
           EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
           EMAIL_TO: ${{ secrets.EMAIL_TO }}
