@@ -1,55 +1,48 @@
 import requests
-from bs4 import BeautifulSoup
+import hashlib
+import os
+import argparse
 import smtplib
 from email.mime.text import MIMEText
-import json
-import os
-import sys
 
-# SETTINGS
+# -----------------------------
+# SETTINGS (use GitHub secrets)
+# -----------------------------
 URL = "https://hiring.amazon.com/app#/jobSearch?query=&postal=99004&locale=en-US"
-CHECK_FILE = "seen_jobs.json"
+CHECK_FILE = "last_page_hash.txt"
+
 EMAIL_FROM = os.getenv("EMAIL_FROM")
-EMAIL_TO = os.getenv("EMAIL_TO")
+EMAIL_TO = os.getenv("EMAIL_TO")  # can be email or Google Voice
 EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
-DISCORD_WEBHOOK = os.getenv("DISCORD_WEBHOOK") 
 
-def send_discord(new_jobs):
-    content = "\n".join([f"{j['title']}: {j['link']}" for j in new_jobs])
-    data = {"content": content}
-    response = requests.post(DISCORD_WEBHOOK, json=data)
-    if response.status_code == 204:
-        print("✅ Discord alert sent")
-    else:
-        print("❌ Failed to send Discord alert:", response.text)
+DISCORD_WEBHOOK = os.getenv("DISCORD_WEBHOOK")  # Discord webhook URL
 
-def fetch_jobs():
+# -----------------------------
+# HELPER FUNCTIONS
+# -----------------------------
+def fetch_page():
     resp = requests.get(URL)
-    soup = BeautifulSoup(resp.text, "html.parser")
-    jobs = soup.select("div.job-tile")  # selector may change depending on page structure
-    job_list = []
-    for job in jobs:
-        title = job.select_one("h3").get_text(strip=True)
-        link = "https://www.amazon.jobs" + job.select_one("a")["href"]
-        job_list.append({"title": title, "link": link})
-    return job_list
+    resp.raise_for_status()
+    return resp.text
 
-def load_seen():
+def compute_hash(content):
+    return hashlib.md5(content.encode("utf-8")).hexdigest()
+
+def load_last_hash():
     if os.path.exists(CHECK_FILE):
         with open(CHECK_FILE, "r") as f:
-            return json.load(f)
-    return []
+            return f.read().strip()
+    return None
 
-def save_seen(jobs):
+def save_hash(hash_value):
     with open(CHECK_FILE, "w") as f:
-        json.dump(jobs, f)
+        f.write(hash_value)
 
-def send_email(new_jobs):
-    body = "\n".join([f"{j['title']}: {j['link']}" for j in new_jobs])
-    msg = MIMEText(body)
-    msg["Subject"] = f"[Amazon Jobs Alert] {len(new_jobs)} new job(s) posted"
+def send_email_alert(message):
+    msg = MIMEText(message)
+    msg["Subject"] = "[Amazon Jobs Alert] Page changed"
     msg["From"] = EMAIL_FROM
     msg["To"] = EMAIL_TO
 
@@ -58,26 +51,47 @@ def send_email(new_jobs):
         server.login(EMAIL_FROM, EMAIL_PASSWORD)
         server.send_message(msg)
 
+def send_discord_alert(message):
+    if not DISCORD_WEBHOOK:
+        print("❌ Discord webhook not set.")
+        return
+    import requests
+    data = {"content": message}
+    response = requests.post(DISCORD_WEBHOOK, json=data)
+    if response.status_code == 204:
+        print("✅ Discord alert sent")
+    else:
+        print("❌ Failed to send Discord alert:", response.text)
+
+# -----------------------------
+# MAIN FUNCTION
+# -----------------------------
 def main(test_mode=False):
     if test_mode:
-        new_jobs = [{"title": "TEST JOB", "link": "https://example.com"}]
-        send_email(new_jobs)
-        send_discord(new_jobs)
-        print("✅ Test email and Discord sent!")
+        print("⚡ Test mode active – sending alert without checking page.")
+        message = f"[TEST] Amazon jobs page alert: {URL}"
+        send_email_alert(message)
+        send_discord_alert(message)
         return
 
-    jobs = fetch_jobs()
-    seen = load_seen()
-    new_jobs = [j for j in jobs if j not in seen]
+    page = fetch_page()
+    current_hash = compute_hash(page)
+    last_hash = load_last_hash()
 
-    if new_jobs:
-        send_discord(new_jobs)
-        send_email(new_jobs)
-        save_seen(jobs)
-        print(f"✅ Sent {len(new_jobs)} new jobs")
+    if last_hash != current_hash:
+        print("✅ Page changed! Sending alerts.")
+        message = f"Amazon jobs page has changed: {URL}"
+        send_email_alert(message)
+        send_discord_alert(message)
+        save_hash(current_hash)
     else:
-        print("No new jobs found.")
+        print("No change detected.")
 
+# -----------------------------
+# ENTRY POINT
+# -----------------------------
 if __name__ == "__main__":
-    test_mode = "--test" in sys.argv
-    main(test_mode=test_mode)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--test", action="store_true", help="Send a test alert")
+    args = parser.parse_args()
+    main(test_mode=args.test)
