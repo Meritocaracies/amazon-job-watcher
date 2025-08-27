@@ -17,11 +17,13 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install dependencies
-        run: pip install -r requirements.txt
+      - name: Install dependencies & Playwright browser
+        run: |
+          pip install -r requirements.txt
+          playwright install chromium
 
       - name: Run job watcher
-        run: python amazon_jobs.py
+        run: python amazon_jobs_playwright.py
         env:
           EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
           EMAIL_TO: ${{ secrets.EMAIL_TO }}
