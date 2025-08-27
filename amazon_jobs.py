@@ -1,31 +1,38 @@
-import requests
-import hashlib
+from dotenv import load_dotenv
 import os
+import hashlib
 import argparse
 import smtplib
 from email.mime.text import MIMEText
+from playwright.sync_api import sync_playwright
 
+load_dotenv()  # load .env file
 # -----------------------------
-# SETTINGS (use GitHub secrets)
+# SETTINGS
 # -----------------------------
 URL = "https://hiring.amazon.com/app#/jobSearch?query=&postal=99004&locale=en-US"
 CHECK_FILE = "last_page_hash.txt"
 
 EMAIL_FROM = os.getenv("EMAIL_FROM")
-EMAIL_TO = os.getenv("EMAIL_TO")  # can be email or Google Voice
+EMAIL_TO = os.getenv("EMAIL_TO")  # can be your Gmail or Google Voice
 EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
 
-DISCORD_WEBHOOK = os.getenv("DISCORD_WEBHOOK")  # Discord webhook URL
+DISCORD_WEBHOOK = os.getenv("DISCORD_WEBHOOK")  # optional Discord push
 
 # -----------------------------
 # HELPER FUNCTIONS
 # -----------------------------
-def fetch_page():
-    resp = requests.get(URL)
-    resp.raise_for_status()
-    return resp.text
+def fetch_page_content():
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        page = browser.new_page()
+        page.goto(URL)
+        page.wait_for_load_state("networkidle")  # wait for JS to finish
+        content = page.content()
+        browser.close()
+    return content
 
 def compute_hash(content):
     return hashlib.md5(content.encode("utf-8")).hexdigest()
@@ -74,8 +81,8 @@ def main(test_mode=False):
         send_discord_alert(message)
         return
 
-    page = fetch_page()
-    current_hash = compute_hash(page)
+    page_content = fetch_page_content()
+    current_hash = compute_hash(page_content)
     last_hash = load_last_hash()
 
     if last_hash != current_hash:
