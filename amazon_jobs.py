@@ -1,4 +1,4 @@
-from dotenv import load_dotenv
+#from dotenv import load_dotenv
 import os
 import hashlib
 import argparse
@@ -6,7 +6,7 @@ import smtplib
 from email.mime.text import MIMEText
 from playwright.sync_api import sync_playwright
 
-load_dotenv()  # load .env file
+#load_dotenv()  # load .env file
 # -----------------------------
 # SETTINGS
 # -----------------------------
