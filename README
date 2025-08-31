@@ -1,0 +1,44 @@
+# Amazon Job Watcher
+
+_Automated job posting tracker for Amazon (or any site), with instant Discord notifications._
+
+---
+
+## Overview
+
+I built this project because I kept missing job postings for my local Amazon fulfillment center. They often disappeared within **30–45 minutes**, while existing trackers updated only every 3–6 hours (unless you paid).  
+
+This watcher monitors a job listings page in real time and sends a **Discord notification** as soon as it changes. Thanks to this, I got notified instantly and landed a job within a few days.  
+
+---
+
+## Features
+
+- Uses **Playwright** for browser automation  
+- Detects **site changes** via hashing  
+- Sends **Discord webhook notifications**  
+- Works locally, on servers, or via **GitHub Actions**  
+- Can be adapted to track **any website**, not just Amazon  
+
+---
+
+## Example
+
+Discord notification when a new posting goes live:
+
+![Discord notification example](docs/discord-example.jpeg)
+
+---
+
+## Quickstart
+
+```bash
+# Clone the repo
+git clone https://github.com/Meritocaracies/amazon-job-watcher.git
+cd amazon-job-watcher
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Run the watcher
+python watcher.py
