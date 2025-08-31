@@ -2,8 +2,8 @@ name: Amazon Job Watcher
 
 on:
   schedule:
-    - cron: "*/30 * * * *"   # every 30 minutes
-  workflow_dispatch:          # allow manual run too
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
 
 jobs:
   check-jobs:
@@ -17,15 +17,32 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install dependencies & Playwright browser
+      - name: Cache pip
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright
+          restore-keys: |
+            ${{ runner.os }}-playwright
+
+      - name: Install dependencies
         run: |
           pip install -r requirements.txt
           playwright install chromium
 
       - name: Run job watcher
-        run: python amazon_jobs_playwright.py
+        run: python amazon_jobs.py
         env:
           EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
           EMAIL_TO: ${{ secrets.EMAIL_TO }}
           EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}

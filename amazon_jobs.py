@@ -1,12 +1,17 @@
-from dotenv import load_dotenv
 import os
+try:
+    from dotenv import load_dotenv
+    load_dotenv()  # will read from .env if present
+except ImportError:
+    # dotenv isn't installed, that's fine, we just skip it
+    pass
 import hashlib
 import argparse
 import smtplib
 from email.mime.text import MIMEText
 from playwright.sync_api import sync_playwright
 
-load_dotenv()  # load .env file
+#load_dotenv()  # load .env file
 # -----------------------------
 # SETTINGS
 # -----------------------------
